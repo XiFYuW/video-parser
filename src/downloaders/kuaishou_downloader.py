@@ -11,13 +11,11 @@ from configs.logging_config import logger
 class KuaishouDownloader(BaseDownloader):
     def __init__(self, real_url):
         super().__init__(real_url)
-        timestamp = int(time.time() * 1000)
         self.headers = {
             "content-type": "application/json; charset=UTF-8",
             'User-Agent': random.choice(USER_AGENT_PC),
             'referer': 'https://www.kuaishou.com/',
-            # 'cookie': f'didv={timestamp}; kpf=PC_WEB; clientid=3; did=web_23e5afb8fd199a724fa05c31d1826358; kpn=KUAISHOU_VISION',
-            'cookie': 'kpf=PC_WEB; clientid=3; did=web_66ce2b981cc6326ce81c6593ec91501c; userId=3978546192; kuaishou.server.webday7_st=ChprdWFpc2hvdS5zZXJ2ZXIud2ViZGF5Ny5zdBKwATXJWZrns_X3k5b6EXLF6ooCljC0gVVIPCzBhwCxWnpSihvqoREftPzm-sr8F2VyYbgWgLQ4DDNqhPAHDJ9XP5L9mqQvDejh8LnSf5_hTUDBhfmZQL9UsmohvK5xnc2CeQ_x2mXeJEm9Fg6xWe3qzvmzFgaxNDler6igGyd5uipoa-eTAr3vogs4UNuWjfwTcjYrlLjhd69ao0_PsRssIpN1JDqdmn5RW_NcaCp6ZOyPGhKFbZIQPBqwmm2qxNndD6tYkp4iIH54RTp6GjDbOO9cGXuiLNw2QAOgYTzEFhzlU9yMy_1zKAUwAQ; kuaishou.server.webday7_ph=b0edd97f04f01bde6a8f5e1a27d025a937ce; kpn=KUAISHOU_VISION',
+            'cookie': 'did=web_2c12e119a808402da770d35dffe6474b; didv=1767324562000; kwfv1=PnGU+9+Y8008S+nH0U+0mjPf8fP08f+98f+nLlwnrIP9+Sw/ZFGfzY+eGlGf+f+e4SGfbYP0QfGnLFwBLU80mYGA+DPe+Y8BL7GAPFw/YDPerIP0bY8ePIPA80P0pjG9Lhw/bSPeDU+BGFweb080HFG0DAGALl+fPIw/QY80LF+nPU80pj+/+S80p08nPI+fPM8/chPfPE80bD8nGU+fpYGI==',
         }
         self.data = self.fetch_html_data()
         self.video_id = UrlParser.get_video_id(self.real_url)

@@ -61,7 +61,7 @@ class DouyinDownloader(BaseDownloader):
             if bit_rate and len(bit_rate) > 0:
                 play_addr_list = bit_rate[0].get('play_addr', {}).get('url_list', [])
                 if len(play_addr_list) > 2:
-                    return play_addr_list[2]
+                    return play_addr_list[0]
                 elif len(play_addr_list) > 0:
                     return play_addr_list[0]
 

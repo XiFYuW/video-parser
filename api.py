@@ -25,7 +25,6 @@ from configs.general_constants import (
     SAVE_VIDEO_PATH, DOMAIN, check_essential_dirs
 )
 from utils.web_fetcher import WebFetcher, UrlParser
-from utils.vigenere_cipher import VigenereCipher
 from src.downloader_factory import DownloaderFactory
 
 
@@ -63,51 +62,6 @@ def make_response(retcode: int, retdesc: str, data: dict = None,
         'ranking': ranking,
         'succ': succ
     }
-
-
-def validate_timestamp(request_timestamp: int) -> bool:
-    """验证时间戳是否在合理的时间窗口内"""
-    current_timestamp = int(time.time() * 1000)
-    time_window = 5 * 60 * 1000  # 5分钟的时间窗口
-    return abs(current_timestamp - request_timestamp) <= time_window
-
-
-def validate_request_headers(
-    x_timestamp: str,
-    x_gclt_text: str,
-    x_egct_text: str,
-    *args
-) -> Optional[dict]:
-    """
-    验证请求头和参数
-
-    Returns:
-        None 如果验证通过，否则返回错误响应字典
-    """
-    # 检查是否有缺失的参数
-    missing_params = [param for param in args if not param]
-    if missing_params:
-        logger.error(f'Missing parameters in request')
-        return make_response(400, 'Missing parameters in request', None, None, False)
-
-    if not x_timestamp:
-        logger.error('Missing timestamp in request')
-        return make_response(400, 'Missing timestamp in request', None, None, False)
-
-    try:
-        if not validate_timestamp(int(x_timestamp)):
-            logger.error('Invalid timestamp')
-            return make_response(400, 'Invalid timestamp', None, None, False)
-    except ValueError:
-        logger.error('Invalid timestamp format')
-        return make_response(400, 'Invalid timestamp format', None, None, False)
-
-    if not VigenereCipher(x_timestamp).verify_decryption(x_egct_text, x_gclt_text):
-        logger.error('Decryption verification failed')
-        return make_response(400, 'Decryption verification failed', None, None, False)
-
-    return None
-
 
 # ==================== 应用生命周期 ====================
 
@@ -164,10 +118,6 @@ async def health_check():
 @app.post("/api/parse")
 async def parse_video(
     body: ParseRequest,
-    x_timestamp: str = Header(default="", alias="X-Timestamp"),
-    x_gclt_text: str = Header(default="", alias="X-GCLT-Text"),
-    x_egct_text: str = Header(default="", alias="X-EGCT-Text"),
-    wx_open_id: str = Header(default="Guest", alias="WX-OPEN-ID"),
 ):
     """
     解析视频链接
@@ -176,11 +126,6 @@ async def parse_video(
     """
     try:
         text = body.text
-
-        # 验证请求
-        validation_error = validate_request_headers(x_timestamp, x_gclt_text, x_egct_text, text)
-        if validation_error:
-            return JSONResponse(status_code=400, content=validation_error)
 
         # 提取URL
         extracted_url = UrlParser.get_url(text)
@@ -256,7 +201,7 @@ async def parse_video(
             if audio_url:
                 data_dict['audio_url'] = UrlParser.convert_to_https(audio_url)
 
-        logger.debug(f'{wx_open_id} {platform} Parse Success')
+        
         return JSONResponse(
             status_code=200,
             content=make_response(200, '成功', data_dict, None, True)
@@ -275,10 +220,6 @@ async def parse_video(
 @app.post("/api/download")
 async def download_video(
     body: DownloadRequest,
-    x_timestamp: str = Header(default="", alias="X-Timestamp"),
-    x_gclt_text: str = Header(default="", alias="X-GCLT-Text"),
-    x_egct_text: str = Header(default="", alias="X-EGCT-Text"),
-    wx_open_id: str = Header(default="Guest", alias="WX-OPEN-ID"),
 ):
     """
     获取视频下载链接
@@ -289,18 +230,13 @@ async def download_video(
         request_video_url = body.video_url
         request_video_id = body.video_id
 
-        # 验证请求
-        validation_error = validate_request_headers(x_timestamp, x_gclt_text, x_egct_text, request_video_url)
-        if validation_error:
-            return JSONResponse(status_code=400, content=validation_error)
-
         # 判断视频链接的域名是否为小程序的合法域名
         domain = UrlParser.get_domain(request_video_url)
         logger.debug(f'Checking domain: {domain}')
 
         if domain in MINI_PROGRAM_LEGAL_DOMAIN:
             # 如果是，直接返回视频链接
-            logger.debug(f'{wx_open_id} 直接返回视频链接')
+            
             return JSONResponse(
                 status_code=200,
                 content=make_response(200, '成功', {'download_url': request_video_url}, None, True)
@@ -339,7 +275,6 @@ async def download_video(
                     response = session.get(request_video_url, headers=headers, stream=True, timeout=120)
                     response.raise_for_status()
                 except (RequestException, ConnectionError) as e:
-                    logger.error(f'{wx_open_id} Failed to connect: {e}')
                     return JSONResponse(
                         status_code=200,
                         content=make_response(200, '服务器下载失败，返回原始链接', {'download_url': request_video_url}, None, True)
@@ -352,7 +287,7 @@ async def download_video(
                             if chunk:
                                 f.write(chunk)
                 except (ChunkedEncodingError, IOError) as e:
-                    logger.error(f'{wx_open_id} Failed to save video: {e}')
+                    
                     # 删除可能不完整的文件
                     if os.path.exists(video_path):
                         os.remove(video_path)
@@ -363,7 +298,7 @@ async def download_video(
 
             # 返回视频的 URL
             download_url = f'{current_domain}/static/videos/{video_filename}'
-            logger.debug(f'{wx_open_id} 返回视频地址: {download_url}')
+            
             return JSONResponse(
                 status_code=200,
                 content=make_response(200, '成功', {'download_url': download_url}, None, True)
